@@ -96,7 +96,8 @@ python exploit.py 127.0.0.1 5000 /upload infinite
 ```
 
 
-Uploading dos-server.mp4…
+https://github.com/user-attachments/assets/8b07e9dc-57f9-481b-a818-fd5746b90134
+
 
 
 
