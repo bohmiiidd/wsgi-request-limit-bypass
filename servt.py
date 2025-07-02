@@ -209,10 +209,15 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
                 if key in environ:
                     value = f"{environ[key]},{value}"
             environ[key] = value
-
+        # Check if the incoming request uses 'chunked' Transfer-Encodin
         if environ.get("HTTP_TRANSFER_ENCODING", "").strip().lower() == "chunked":
+            # Indicate that the WSGI input stream will be terminated by chunked encoding
             environ["wsgi.input_terminated"] = True
+            # Define a maximum allowed request body size (e.g., 16 MB)
+            # This helps prevent denial-of-service attacks with huge payloads
             max_length = 16 * 1024 * 1024  # example max: 16MB or get from config
+            # Replace the standard input stream with a custom DechunkedInput wrapper
+            # that properly handles chunked transfer encoding and enforces max size
             environ["wsgi.input"] = DechunkedInput(environ["wsgi.input"], max_content_length=max_length)
 
 
