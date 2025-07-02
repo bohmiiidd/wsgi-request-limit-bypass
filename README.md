@@ -94,6 +94,12 @@ In another terminal, run the exploit against the server:
 ```bash
 python exploit.py 127.0.0.1 5000 /upload infinite
 ```
+
+
+Uploading dos-server.mp4…
+
+
+
 This will send an infinite HTTP chunked upload request causing the server to hang, demonstrating the DoS vulnerability.
 Explanation
 The Werkzeug server reads all the incoming chunked request data with request.get_data().
@@ -104,17 +110,17 @@ Werkzeug's max_content_length protection is bypassed because the server keeps wa
 
 This causes the server to hang indefinitely, leading to a Denial of Service.
 
-###Impact
+#Impact
 Remote attacker can send crafted chunked uploads that hang the server.
 
 Denies legitimate clients access to the server.
 
 Could be exploited for DoS attacks on services using Werkzeug WSGI server without additional protections.
 
-###Disclaimer
+#Disclaimer
 Use this code only in environments you own or have explicit permission to test. Do not attack unauthorized systems.
 
-###Notes
+#Notes
 1.This is for educational and testing purposes only.
 
 2.Werkzeug's built-in server is a development server and not meant for production.
