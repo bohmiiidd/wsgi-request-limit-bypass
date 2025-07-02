@@ -81,6 +81,7 @@ if t.TYPE_CHECKING:
 
 
 class DechunkedInput(io.RawIOBase):
+        """An input stream that handles Transfer-Encoding 'chunked'"""
     def __init__(self, rfile):
         self._rfile = rfile
         self._done = False
@@ -92,11 +93,13 @@ class DechunkedInput(io.RawIOBase):
         return True
 
     def read_chunk_len(self):
+          # Read the length of the next chunk from the input stream
         line = self._rfile.readline().decode("latin1")
         try:
             _len = int(line.strip(), 16)
-        except ValueError:
-            raise OSError("Invalid chunk header")
+        except ValueError as err:
+             # Invalid chunk length header, raise with original error context
+            raise OSError("Invalid chunk header") from err
         if _len < 0:
             raise OSError("Negative chunk length not allowed")
         return _len
@@ -109,22 +112,26 @@ class DechunkedInput(io.RawIOBase):
 
         while not self._done and read < buf_len:
             if self._len == 0:
+                # Read the next chunk length when no data left in current chunk
                 self._len = self.read_chunk_len()
                 if self._len == 0:
+                    # Final chunk of size 0 found - mark done and consume trailing newline
                     self._done = True
                     # Consume trailing newline
                     terminator = self._rfile.readline()
                     if terminator not in (b"\n", b"\r\n", b"\r"):
                         raise OSError("Missing chunk terminating newline")
                     break
-
+            # Calculate how many bytes to read next, limited by chunk length,
+            # buffer size, and max allowed total size
             to_read = min(buf_len - read, self._len, self._max_total_read - self._total_read)
             if to_read <= 0:
-                # Exceeded max total allowed size
+                # Total request size limit exceeded
                 raise OSError("Request body too large")
 
             chunk = self._rfile.read(to_read)
             if not chunk:
+                # Client disconnected prematurely during chunked upload
                 raise OSError("Client disconnected during chunked encoding")
 
             n = len(chunk)
@@ -132,7 +139,7 @@ class DechunkedInput(io.RawIOBase):
             read += n
             self._len -= n
             self._total_read += n
-
+              # Safety check - reject if over max total read
             if self._total_read > self._max_total_read:
                 raise OSError("Request body too large")
 
