@@ -93,29 +93,33 @@ if t.TYPE_CHECKING:
 
 
 class DechunkedInput(io.RawIOBase):
-        """An input stream that handles Transfer-Encoding 'chunked'"""
-    def __init__(self, rfile):
+    """An input stream that handles Transfer-Encoding 'chunked'"""
+
+    def __init__(self, rfile, max_content_length=16 * 1024 * 1024):
         self._rfile = rfile
         self._done = False
         self._len = 0
-        self._max_total_read = 16 * 1024 * 1024  # 16MB max total
         self._total_read = 0
+        self._max_total_read = max_content_length
 
     def readable(self):
         return True
 
     def read_chunk_len(self):
-          # Read the length of the next chunk from the input stream
+    # Read the length of the next chunk from the input stream
         line = self._rfile.readline().decode("latin1")
+        if not line.strip():
+        # Empty line is invalid chunk header
+            raise OSError("Empty chunk header line received")
         try:
             _len = int(line.strip(), 16)
         except ValueError as err:
-             # Invalid chunk length header, raise with original error context
+            # Invalid chunk length header, raise with original error context
             raise OSError("Invalid chunk header") from err
         if _len < 0:
             raise OSError("Negative chunk length not allowed")
         return _len
-
+    
     def readinto(self, buf):
         if self._done:
             return 0
@@ -153,6 +157,7 @@ class DechunkedInput(io.RawIOBase):
             self._total_read += n
               # Safety check - reject if over max total read
             if self._total_read > self._max_total_read:
+                print(f"[!] Malformed chunk header: {line!r}")
                 raise OSError("Request body too large")
 
         return read
