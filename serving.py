@@ -11,6 +11,7 @@ It provides features like interactive debugging and code reloading. Use
     from myapp import create_app
     from werkzeug import run_simple
 """
+
 from __future__ import annotations
 
 import errno
@@ -91,7 +92,7 @@ if t.TYPE_CHECKING:
     )
     from cryptography.x509 import Certificate
 
-
+#------------- Patched class --------------------#
 class DechunkedInput(io.RawIOBase):
     """An input stream that handles Transfer-Encoding 'chunked'"""
 
@@ -106,10 +107,10 @@ class DechunkedInput(io.RawIOBase):
         return True
 
     def read_chunk_len(self):
-    # Read the length of the next chunk from the input stream
+        # Read the length of the next chunk from the input stream
         line = self._rfile.readline().decode("latin1")
         if not line.strip():
-        # Empty line is invalid chunk header
+            # Empty line is invalid chunk header
             raise OSError("Empty chunk header line received")
         try:
             _len = int(line.strip(), 16)
@@ -119,7 +120,7 @@ class DechunkedInput(io.RawIOBase):
         if _len < 0:
             raise OSError("Negative chunk length not allowed")
         return _len
-    
+
     def readinto(self, buf):
         if self._done:
             return 0
@@ -155,12 +156,13 @@ class DechunkedInput(io.RawIOBase):
             read += n
             self._len -= n
             self._total_read += n
-              # Safety check - reject if over max total read
+            # Safety check - reject if over max total read
             if self._total_read > self._max_total_read:
-                print(f"[!] Malformed chunk header: {line!r}")
+                #print(f"[!] Malformed chunk header: {line!r}")
                 raise OSError("Request body too large")
 
         return read
+
 
 class WSGIRequestHandler(BaseHTTPRequestHandler):
     """A request handler that implements WSGI dispatching."""
@@ -226,6 +228,7 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
                 if key in environ:
                     value = f"{environ[key]},{value}"
             environ[key] = value
+        #--------------------- Patch chunk len validation -------------------#
         # Check if the incoming request uses 'chunked' Transfer-Encodin
         if environ.get("HTTP_TRANSFER_ENCODING", "").strip().lower() == "chunked":
             # Indicate that the WSGI input stream will be terminated by chunked encoding
@@ -236,7 +239,7 @@ class WSGIRequestHandler(BaseHTTPRequestHandler):
             # Replace the standard input stream with a custom DechunkedInput wrapper
             # that properly handles chunked transfer encoding and enforces max size
             environ["wsgi.input"] = DechunkedInput(environ["wsgi.input"], max_content_length=max_length)
-
+        #----------------------- end patch ---------------------------------------#
 
         # Per RFC 2616, if the URL is absolute, use that as the host.
         # We're using "has a scheme" to indicate an absolute URL.
